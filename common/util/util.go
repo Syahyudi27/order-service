@@ -1,22 +1,19 @@
 package util
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"math"
-	"github.com/SebastiaanKlippert/go-wkhtmltopdf"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
-	"text/template"
 
 	"github.com/dustin/go-humanize"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	 _ "github.com/spf13/viper/remote"
+	_ "github.com/spf13/viper/remote"
 )
 
 type PagiationParam struct {
@@ -40,7 +37,7 @@ func GeneratePagination(params PagiationParam) PaginationResult {
 	totalPage := int(math.Ceil(float64(params.Count) / float64(params.Limit)))
 
 	var (
-		nextPage int
+		nextPage     int
 		previousPage int
 	)
 
@@ -166,47 +163,9 @@ func BindFromConsul(dest any, endPoint, path string) error {
 	return nil
 }
 
-func Add1(a int) int{
-	return a + 1
-}
-
-func GeneratePdfToHtml(htmlTemplate string, data any) ([]byte, error) {
-	funcMap := template.FuncMap{
-		"add1": Add1,
+func Recover() {
+	if err := recover(); err != nil {
+		logrus.SetLevel(logrus.ErrorLevel)
+		logrus.Errorf("error: %v", err)
 	}
-
-	template, err := template.New("htmlTemplate").Funcs(funcMap).Parse(htmlTemplate)
-	if err != nil {
-		return nil, err
-	}	
-
-	var filledTemplate bytes.Buffer
-	if err := template.Execute(&filledTemplate, data); err != nil {
-		return nil, err
-	}
-
-	htmlContent := filledTemplate.String()
-
-	pdfGenerator, err := wkhtmltopdf.NewPDFGenerator()
-	if err != nil {
-		logrus.Errorf("failed to create pdf generator: %v", err)
-		return nil, err
-	}
-
-	pdfGenerator.Dpi.Set(300)
-	pdfGenerator.NoCollate.Set(true)
-	pdfGenerator.Orientation.Set(wkhtmltopdf.OrientationLandscape)
-	pdfGenerator.PageSize.Set(wkhtmltopdf.PageSizeA4)
-	pdfGenerator.Grayscale.Set(true)
-	pdfGenerator.AddPage(wkhtmltopdf.NewPageReader(strings.NewReader(htmlContent)))
-
-	err = pdfGenerator.Create()
-	if err != nil {
-		logrus.Errorf("failed to create pdf: %v", err)
-		return nil, err
-	}
-
-
-	return pdfGenerator.Bytes(), nil
-
 }
