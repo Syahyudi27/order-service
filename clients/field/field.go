@@ -3,52 +3,49 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"order-service/clients/config"
 	"order-service/common/util"
 	config2 "order-service/config"
 	"order-service/constants"
 	"order-service/domain/dto"
-
-	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type PaymentClient struct {
+type FieldClient struct {
 	client config.IClientConfig
 }
 
-type IPaymentClient interface {
-	GetPaymentByUUID(context.Context, uuid.UUID) (*PaymentData, error)
-	CreatePaymentLink(context.Context, *dto.PaymentRequest) (*PaymentData, error)
+type IFieldClient interface {
+	GetFieldByUUID(context.Context, uuid.UUID) (*FieldData, error)
+	UpdateStatus(request *dto.UpdateFieldScheduleStatusRequest) error
 }
 
-func NewPaymentClient(client config.IClientConfig) *PaymentClient {
-	return &PaymentClient{
-		client: client,
-	}
+func NewFieldClient(client config.IClientConfig) *FieldClient {
+	return &FieldClient{client: client}	
 }
 
-func (p *PaymentClient) GetPaymentByUUID(ctx context.Context, uuid uuid.UUID) (*PaymentData, error) {
+func (f *FieldClient) GetFieldByUUID(ctx context.Context, uuid uuid.UUID) (*FieldData, error) {
 	unixTime := time.Now().Unix()
 	generateAPIKey := fmt.Sprintf("%s:%s:%d",
 		config2.Config.AppName,
-		p.client.GetSignatureKey(),
+		f.client.GetSignatureKey(),
 		unixTime,
 	)
 	apiKey := util.GenerateSHA256(generateAPIKey)
 	token := ctx.Value(constants.Token).(string)
 	bearerToken := fmt.Sprintf("Bearer %s", token)
 
-	var response PaymentResponse
-	request := p.client.GetClient().Clone().
+	var response FieldResponse
+	request := f.client.GetClient().Clone().
 		Set(constants.Authorization, bearerToken).
 		Set(constants.XServiceName, config2.Config.AppName).
 		Set(constants.XApiKey, apiKey).
 		Set(constants.XRequestAt, fmt.Sprintf("%d", unixTime)).
-		Get(fmt.Sprintf("%s/api/v1/auth/user", p.client.GetBaseURL()))
+		Get(fmt.Sprintf("%s/api/v1/auth/field/shecuhedule/%s", f.client.GetBaseURL(), uuid))
 
 	resp, _, errs := request.EndStruct(&response)
 	if len(errs) > 0 {
@@ -56,31 +53,28 @@ func (p *PaymentClient) GetPaymentByUUID(ctx context.Context, uuid uuid.UUID) (*
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("payment response: %s", response.Message)
+		return nil, fmt.Errorf("user response: %s", response.Message)
 	}
 
 	return &response.Data, nil
 }
 
-func (p *PaymentClient) CreatePaymentLink(ctx context.Context, paymentRequest *dto.PaymentRequest) (*PaymentData, error) {
+func (f *FieldClient) UpdateStatus(request *dto.UpdateFieldScheduleStatusRequest) error {
 	unixTime := time.Now().Unix()
 	generateAPIKey := fmt.Sprintf("%s:%s:%d",
 		config2.Config.AppName,
-		p.client.GetSignatureKey(),
+		f.client.GetSignatureKey(),
 		unixTime,
 	)
 	apiKey := util.GenerateSHA256(generateAPIKey)
-	token := ctx.Value(constants.Token).(string)
-	bearerToken := fmt.Sprintf("Bearer %s", token)
 
-	body, err := json.Marshal(paymentRequest)
+	body, err := json.Marshal(request)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp, bodyResp, errs := p.client.GetClient().Clone().
-		Post(fmt.Sprintf("%s/api/v1/auth/payment", p.client.GetBaseURL())).
-		Set(constants.Authorization, bearerToken).
+	resp, bodyResp, errs := f.client.GetClient().Clone().
+		Post(fmt.Sprintf("%s/api/v1/auth/payment", f.client.GetBaseURL())).
 		Set(constants.XServiceName, config2.Config.AppName).
 		Set(constants.XApiKey, apiKey).
 		Set(constants.XRequestAt, fmt.Sprintf("%d", unixTime)).
@@ -88,23 +82,23 @@ func (p *PaymentClient) CreatePaymentLink(ctx context.Context, paymentRequest *d
 		End()
 	
 	if len(errs) > 0 {
-		return nil, errs[0]
+		return errs[0]
 	}
 
-	var response PaymentResponse
+	var response FieldResponse
 	if resp.StatusCode != http.StatusCreated {
 		err = json.Unmarshal([]byte(bodyResp), &response)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		PaymentError := fmt.Errorf("payment response: %s", response.Message)
-		return nil, PaymentError
+		FieldError := fmt.Errorf("payment response: %s", response.Message)
+		return FieldError
 	}
 
 	err = json.Unmarshal([]byte(bodyResp), &response)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &response.Data, nil
+	return nil
 }
