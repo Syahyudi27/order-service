@@ -14,8 +14,8 @@ type OrderRequest struct {
 type OrderRequestParam struct {
 	Page       int    `form:"page" validate:"required"`
 	Limit      int    `form:"limit" validate:"required"`
-	SortColumn string `form:"sortColumn"`
-	SortOrder  string `form:"sortOrder"`
+	SortColumn *string `form:"sortColumn"`
+	SortOrder  *string `form:"sortOrder"`
 }
 
 type OrderResponse struct {

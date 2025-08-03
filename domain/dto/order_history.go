@@ -1,5 +1,8 @@
 package dto
 
+import "order-service/constants"
+
 type OrderHistoryRequest struct {
-	OrderID string `json:"orderId"`
+	OrderID string
+	Status  constants.OrderStatusString
 }

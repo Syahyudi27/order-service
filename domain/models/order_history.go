@@ -1,11 +1,14 @@
 package models
 
-import "time"
+import (
+	"order-service/constants"
+	"time"
+)
 
 type OrderHistory struct {
 	ID        uint   `gorm:"primaryKey:autoIncrement"`
-	OrderID   uint   `gorm:"type:bigint;not null"`
-	Status    string `gorm:"type:varchar(30);not null"`
+	OrderID  string   `gorm:"type:bigint;not null"`
+	Status    constants.OrderStatusString `gorm:"type:varchar(30);not null"`
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
 }
